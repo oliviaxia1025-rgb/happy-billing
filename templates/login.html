@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login — Happy Billing</title>
+<style>
+  :root{--jade:#1C5240;--jade-deep:#12382B;--cinnabar:#B33A27;--gold:#BC9341;--paper:#F6F1E7;--celadon:#DCEAE1;--ink:#211F19}
+  *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,'Segoe UI',Arial,sans-serif}
+  body{min-height:100vh;display:grid;place-items:center;background:linear-gradient(165deg,#0E2A21,#1C5240);padding:20px}
+  .card{background:#fff;border-radius:22px;width:100%;max-width:420px;overflow:hidden;box-shadow:0 30px 70px -30px rgba(0,0,0,.5)}
+  .head{background:var(--jade-deep);padding:30px;text-align:center;color:#fff}
+  .seal{width:52px;height:52px;border-radius:11px;background:var(--cinnabar);display:grid;place-items:center;margin:0 auto 14px;position:relative}
+  .seal::after{content:"";position:absolute;inset:4px;border:1.5px solid rgba(255,255,255,.55);border-radius:7px}
+  .seal span{font-size:26px;font-family:'Noto Serif SC',serif;position:relative}
+  .head h1{font-size:21px}.head p{color:var(--celadon);font-size:13px;margin-top:4px}
+  .toggle{display:flex;border-bottom:1px solid #eee}
+  .toggle button{flex:1;padding:15px;background:none;border:none;font-size:14px;font-weight:600;color:#999;cursor:pointer;position:relative}
+  .toggle button.active{color:var(--jade)}
+  .toggle button.active::after{content:"";position:absolute;left:20px;right:20px;bottom:0;height:3px;background:var(--cinnabar);border-radius:3px}
+  .body{padding:28px}
+  form{display:none}form.active{display:block}
+  label{display:block;font-size:12px;font-weight:600;color:#5C594F;margin:0 0 5px}
+  input{width:100%;padding:11px 13px;border:1.5px solid #ddd;border-radius:9px;font-size:14px;margin-bottom:13px;background:#FBF8F1}
+  input:focus{outline:none;border-color:var(--jade);background:#fff}
+  .row{display:flex;gap:10px}.row>div{flex:1}
+  button.submit{width:100%;padding:12px;background:var(--cinnabar);color:#fff;border:none;border-radius:100px;font-size:15px;font-weight:600;cursor:pointer;margin-top:4px}
+  button.submit:hover{background:#CB5239}
+  .msg{display:none;margin-top:12px;padding:10px 13px;border-radius:9px;font-size:13px;font-weight:600}
+  .msg.err{display:block;background:#F3DED9;color:var(--cinnabar)}
+  .hint{margin-top:16px;font-size:11.5px;color:#999;text-align:center;line-height:1.5}
+  .alt{text-align:center;font-size:13px;color:#5C594F;margin-top:14px}
+  .alt a{color:var(--cinnabar);font-weight:600;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="head">
+    <div class="seal"><span>和</span></div>
+    <h1>Happy Billing</h1>
+    <p>中医保险代办 · Billing Portal</p>
+  </div>
+  <div class="toggle">
+    <button id="tLogin" class="active" onclick="tab('login')">Log In 登录</button>
+    <button id="tReg" onclick="tab('register')">Register 注册</button>
+  </div>
+  <div class="body">
+    <!-- LOGIN -->
+    <form id="f-login" class="active" onsubmit="return false">
+      <label>Username 用户名</label>
+      <input id="li_user" autocomplete="username" placeholder="admin or dr.olivia">
+      <label>Password 密码</label>
+      <input id="li_pass" type="password" autocomplete="current-password" placeholder="••••••••">
+      <button class="submit" onclick="doLogin()">Log In 登录 →</button>
+      <div class="msg" id="loginMsg"></div>
+      <div class="alt">New clinic? <a onclick="tab('register')">Register here 注册</a></div>
+      <div class="hint">Demo logins:<br><b>admin / admin123</b> (staff — sees all)<br><b>dr.olivia / demo1234</b> (doctor)</div>
+    </form>
+    <!-- REGISTER -->
+    <form id="f-register" onsubmit="return false">
+      <label>Your Name 姓名</label><input id="rg_name" placeholder="Dr. …">
+      <label>Clinic 诊所</label><input id="rg_clinic" placeholder="诊所名称">
+      <div class="row">
+        <div><label>Phone 电话</label><input id="rg_phone" placeholder="408-…"></div>
+        <div><label>Email 邮箱</label><input id="rg_email" placeholder="you@clinic.com"></div>
+      </div>
+      <label>Username 用户名</label><input id="rg_user" autocomplete="username" placeholder="choose a username">
+      <label>Password 密码</label><input id="rg_pass" type="password" autocomplete="new-password" placeholder="at least 6 characters">
+      <button class="submit" onclick="doRegister()">Register for account 注册账号 →</button>
+      <div class="msg" id="regMsg"></div>
+      <div class="alt">Already have an account? <a onclick="tab('login')">Log in 登录</a></div>
+    </form>
+  </div>
+</div>
+<script>
+function tab(w){
+  document.getElementById('tLogin').classList.toggle('active',w==='login');
+  document.getElementById('tReg').classList.toggle('active',w==='register');
+  document.getElementById('f-login').classList.toggle('active',w==='login');
+  document.getElementById('f-register').classList.toggle('active',w==='register');
+}
+function v(id){return document.getElementById(id).value.trim();}
+function err(id,m){const e=document.getElementById(id);e.className='msg err';e.textContent=m;}
+async function doLogin(){
+  const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({username:v('li_user'),password:v('li_pass')})});
+  const d=await r.json();
+  if(!r.ok){return err('loginMsg',d.error||'Login failed');}
+  location.href='/dashboard';
+}
+async function doRegister(){
+  const r=await fetch('/api/register',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({name:v('rg_name'),clinic:v('rg_clinic'),phone:v('rg_phone'),
+      email:v('rg_email'),username:v('rg_user'),password:v('rg_pass')})});
+  const d=await r.json();
+  if(!r.ok){return err('regMsg',d.error||'Registration failed');}
+  location.href='/dashboard';
+}
+</script>
+</body>
+</html>

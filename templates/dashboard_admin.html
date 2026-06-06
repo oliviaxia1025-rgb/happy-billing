@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — Happy Billing</title>
+<style>
+  :root{--jade:#1C5240;--jade-2:#2C7155;--jade-deep:#12382B;--cinnabar:#B33A27;--gold:#BC9341;
+        --paper:#F6F1E7;--paper2:#FBF8F1;--celadon:#DCEAE1;--ink:#211F19;--soft:#5C594F;--line:#e5decb}
+  *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,'Segoe UI',Arial,sans-serif}
+  body{background:var(--paper);color:var(--ink);font-size:14px}
+  .top{background:var(--jade-deep);color:#fff;padding:13px 22px;display:flex;justify-content:space-between;align-items:center}
+  .top .brand{display:flex;align-items:center;gap:11px}
+  .seal{width:38px;height:38px;border-radius:9px;background:var(--cinnabar);display:grid;place-items:center;position:relative}
+  .seal::after{content:"";position:absolute;inset:3px;border:1.5px solid rgba(255,255,255,.5);border-radius:6px}
+  .seal span{font-size:20px;font-family:'Noto Serif SC',serif;position:relative}
+  .top .who{font-size:13px;color:var(--celadon);text-align:right}
+  .top .who b{color:#fff;display:block;font-size:14px}
+  .role{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:100px;margin-top:3px}
+  .role.admin{background:var(--gold);color:#3a2c08}.role.doctor{background:var(--celadon);color:var(--jade)}
+  .logout{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;padding:7px 14px;border-radius:100px;font-size:12px;font-weight:600;cursor:pointer}
+  .logout:hover{background:rgba(255,255,255,.2)}
+  .reqbtn{background:var(--cinnabar);border:1px solid var(--cinnabar);color:#fff;padding:7px 14px;border-radius:100px;font-size:12px;font-weight:600;cursor:pointer;position:relative}
+  .reqbtn .bdg{display:none;position:absolute;top:-6px;right:-6px;background:#fff;color:var(--cinnabar);border-radius:100px;font-size:10px;font-weight:800;padding:1px 6px;min-width:18px}
+  .wrap{display:grid;grid-template-columns:290px 1fr;min-height:calc(100vh - 64px)}
+  .side{background:var(--paper2);border-right:1px solid var(--line);padding:18px}
+  .main{padding:26px 30px;overflow:auto}
+  @media(max-width:820px){.wrap{grid-template-columns:1fr}.side{border-right:none;border-bottom:1px solid var(--line)}}
+  select,input,textarea{width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:13.5px;background:#fff;font-family:inherit}
+  select:focus,input:focus,textarea:focus{outline:none;border-color:var(--jade)}
+  label{font-size:11px;font-weight:600;color:var(--soft);display:block;margin-bottom:4px}
+  .side h3{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--soft);margin:14px 0 10px}
+  .picker label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+  .plist{display:flex;flex-direction:column;gap:6px}
+  .pitem{background:#fff;border:1px solid var(--line);border-radius:10px;padding:11px 13px;cursor:pointer;transition:.15s;display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .pitem:hover{border-color:var(--jade)}
+  .pitem.active{border-color:var(--cinnabar);box-shadow:0 4px 14px -8px rgba(179,58,39,.5)}
+  .pitem b{font-size:14px}.pitem small{display:block;color:var(--soft);font-size:12px;margin-top:2px}
+  .pdot{width:9px;height:9px;border-radius:50%;flex-shrink:0;background:#ccc}
+  .addbtn{width:100%;margin-top:12px;padding:11px;background:var(--jade);color:#fff;border:none;border-radius:100px;font-weight:600;font-size:13px;cursor:pointer}
+  .addbtn:hover{background:var(--jade-2)}
+  .empty-small{color:#aaa;font-size:13px;padding:14px 0}
+  .empty{display:grid;place-items:center;height:60vh;color:#aaa;text-align:center;font-size:15px}
+  .phead{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:20px}
+  .phead h2{font-size:26px;color:var(--jade-deep)}
+  .phead .meta{color:var(--soft);font-size:13px;margin-top:5px;line-height:1.6}
+  .latest{background:linear-gradient(135deg,var(--jade-deep),var(--jade));color:#fff;border-radius:18px;padding:24px 26px;margin-bottom:18px}
+  .latest .when{font-size:12px;color:var(--celadon);font-weight:600;text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:center;gap:8px}
+  .latest .when .live{background:var(--gold);color:#3a2c08;border-radius:100px;padding:2px 9px;font-size:10px;font-weight:800}
+  .latest h3{font-size:24px;margin:8px 0 4px;color:#fff}
+  .latest .big-status{display:flex;align-items:center;gap:10px;font-size:22px;font-weight:700;margin:10px 0}
+  .tick{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;flex-shrink:0;font-size:17px}
+  .tick.ok{background:#3Fae72}.tick.no{background:var(--cinnabar)}.tick.wait{background:var(--gold);color:#3a2c08}
+  .lgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:16px;margin-top:16px;padding-top:16px;border-top:1px solid rgba(255,255,255,.18)}
+  .lgrid .k{font-size:11px;color:var(--celadon);font-weight:600}
+  .lgrid .v{font-size:19px;font-weight:700;margin-top:3px}
+  .lbar{height:9px;border-radius:6px;background:rgba(255,255,255,.18);overflow:hidden;margin:6px 0 3px}
+  .lbar i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),#7FD8AE)}
+  .lnote{margin-top:14px;font-size:13px;color:#EAF3EE;background:rgba(255,255,255,.08);border-radius:10px;padding:11px 14px}
+  .no-latest{background:#fff;border:2px dashed var(--line);border-radius:18px;padding:30px;text-align:center;color:var(--soft);margin-bottom:18px}
+  .no-latest b{color:var(--ink);font-size:16px;display:block;margin-bottom:5px}
+  .tabs{display:flex;gap:4px;border-bottom:2px solid var(--line);margin:22px 0 16px;flex-wrap:wrap}
+  .tab{background:none;border:none;padding:10px 16px;font-size:13.5px;font-weight:600;color:var(--soft);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px}
+  .tab.active{color:var(--cinnabar);border-bottom-color:var(--cinnabar)}
+  .panel{display:none}.panel.active{display:block}
+  .sec-actions{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+  .sec-actions h4{font-size:15px;color:var(--jade-deep)}
+  .addrec{padding:9px 16px;background:var(--cinnabar);color:#fff;border:none;border-radius:100px;font-weight:600;font-size:13px;cursor:pointer}
+  .addrec:hover{background:#CB5239}
+  .rec{background:#fff;border:1px solid var(--line);border-radius:12px;padding:15px 17px;margin-bottom:11px}
+  .rec.newest{border-color:var(--gold);box-shadow:0 6px 18px -12px rgba(188,147,65,.7)}
+  .rec .datestamp{font-size:11px;color:var(--soft);font-weight:600;display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .newtag{background:var(--gold);color:#3a2c08;border-radius:100px;padding:2px 9px;font-size:10px;font-weight:800;letter-spacing:.03em}
+  .rec .rtop{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+  .rec .rtop b{font-size:15px}
+  .badge{font-size:11px;font-weight:700;padding:3px 10px;border-radius:100px}
+  .b-active,.b-paid,.b-done{background:#d8f0e2;color:var(--jade)}
+  .b-pending,.b-submitted{background:#FBEAD3;color:#9A6314}
+  .b-denied,.b-inactive{background:#F3DED9;color:var(--cinnabar)}
+  .b-accepted{background:var(--celadon);color:var(--jade)}
+  .kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;font-size:13px}
+  .kv .k{color:var(--soft);font-size:11px;font-weight:600}
+  .kv .v{font-weight:600;margin-top:1px}
+  .bar{height:8px;border-radius:6px;background:#eee;overflow:hidden;margin:6px 0}
+  .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),var(--jade-2))}
+  .rnote{font-size:12.5px;color:var(--soft);margin-top:9px;padding-top:9px;border-top:1px dashed var(--line)}
+  .docbanner{background:#EAF3EE;border:1px solid var(--celadon);border-radius:12px;padding:13px 16px;font-size:13px;color:var(--jade);margin-bottom:18px;display:flex;gap:10px;align-items:center}
+  .modal{display:none;position:fixed;inset:0;background:rgba(18,56,43,.45);z-index:50;place-items:center;padding:20px}
+  .modal.show{display:grid}
+  .box{background:#fff;border-radius:18px;padding:0;max-width:480px;width:100%;max-height:92vh;overflow:hidden;display:flex;flex-direction:column}
+  .box .bhead{background:var(--jade-deep);color:#fff;padding:18px 22px;display:flex;justify-content:space-between;align-items:center}
+  .box .bhead h3{font-size:18px}
+  .box .bhead .x{background:none;border:none;color:#fff;font-size:22px;cursor:pointer;opacity:.8}
+  .box .bbody{padding:22px;overflow:auto}
+  .steps-bar{display:flex;gap:6px;padding:0 22px 14px;background:var(--jade-deep)}
+  .stepdot{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.2)}
+  .stepdot.on{background:var(--gold)}
+  .wstep{display:none}.wstep.active{display:block;animation:fade .25s}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .wstep .q{font-size:17px;font-weight:700;color:var(--jade-deep);margin-bottom:4px}
+  .wstep .hint{font-size:12.5px;color:var(--soft);margin-bottom:16px}
+  .wstep .field{margin-bottom:14px}
+  .choice{display:flex;gap:10px;flex-wrap:wrap}
+  .choice button{flex:1;min-width:90px;padding:13px;border:2px solid var(--line);background:#fff;border-radius:11px;font-size:14px;font-weight:600;cursor:pointer;color:var(--ink)}
+  .choice button.sel{border-color:var(--jade);background:#EAF3EE;color:var(--jade)}
+  .wnav{display:flex;justify-content:space-between;gap:10px;margin-top:8px;padding-top:16px;border-top:1px solid var(--line)}
+  .wnav button{padding:11px 22px;border-radius:100px;font-weight:600;font-size:14px;cursor:pointer;border:none}
+  .wback{background:#eee;color:var(--soft)}
+  .wnext{background:var(--cinnabar);color:#fff}
+  .wnext:hover{background:#CB5239}
+  .review{background:var(--paper2);border-radius:11px;padding:14px;font-size:13px}
+  .review div{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed var(--line)}
+  .review div:last-child{border:none}
+  .review .k{color:var(--soft)}.review .v{font-weight:600}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .savebtn{padding:11px 22px;background:var(--cinnabar);color:#fff;border:none;border-radius:100px;font-weight:600;cursor:pointer;font-size:14px}
+  .savebtn:hover{background:#CB5239}
+  .flag{font-size:12px;color:#9A6314;background:#FBEAD3;border-radius:9px;padding:10px 13px;margin-bottom:14px}
+</style>
+</head>
+<body data-role="{{ user['role'] }}" data-name="{{ user['name'] }}" data-clinic="{{ user['clinic'] or '' }}">
+
+<div class="top">
+  <div class="brand"><div class="seal"><span>和</span></div><b style="font-size:16px">Happy Billing</b></div>
+  <div style="display:flex;align-items:center;gap:12px">
+    <button class="reqbtn" onclick="openRequests()">📋 Work Queue 工作队列<span class="bdg" id="reqBadge">0</span></button>
+    <button class="reqbtn" style="background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.25)" onclick="openStaff()">👥 Staff 员工</button>
+    <div class="who"><b id="whoName"></b><span class="role {{ user['role'] }}">{{ 'STAFF 管理' if user['role']=='admin' else 'DOCTOR 医师' }}</span></div>
+    <button class="logout" onclick="logout()">Logout 退出</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <aside class="side">
+    {% if user['role']=='admin' %}
+    <div class="picker">
+      <label>Clinic 诊所</label>
+      <select id="clinicSel" onchange="loadPatients()"><option value="">— Select a clinic 选择诊所 —</option></select>
+    </div>
+    {% endif %}
+    <h3>Patients 病人</h3>
+    <div class="plist" id="plist"><div class="empty-small">Loading…</div></div>
+    <button class="addbtn" onclick="openAddPatient()">＋ Add patient 添加病人</button>
+  </aside>
+
+  <main class="main">
+    <div class="empty" id="emptyState">📋 Open the <b style="color:var(--cinnabar)">&nbsp;Work Queue&nbsp;</b> (top right) to see pending requests,<br>or pick a clinic and patient to enter results.<br><span style="font-size:13px">打开右上角“工作队列”查看待办请求，或选择诊所与病人录入结果。</span></div>
+
+    <div id="detail" style="display:none">
+      <div class="phead">
+        <div><h2 id="d_name"></h2><div class="meta" id="d_meta"></div></div>
+      </div>
+      <div id="latestWrap"></div>
+      <div class="tabs">
+        <button class="tab active" data-p="elig" onclick="ptab('elig')">Eligibility 保险核查</button>
+        <button class="tab" data-p="claims" onclick="ptab('claims')">Claims 申报</button>
+        <button class="tab" data-p="pay" onclick="ptab('pay')">Payments 回款/自付额</button>
+      </div>
+      <div class="panel active" id="panel-elig">
+        <div class="sec-actions"><h4>Eligibility history 核查历史</h4>
+          {% if user['role']=='admin' %}<button class="addrec" onclick="startWizard()">＋ Add result 录入结果</button>{% endif %}</div>
+        <div id="elig-list"></div>
+      </div>
+      <div class="panel" id="panel-claims">
+        <div class="sec-actions"><h4>Claims 申报记录</h4>
+          {% if user['role']=='admin' %}<button class="addrec" onclick="openClaimModal()">＋ Add claim 录入申报</button>{% endif %}</div>
+        <div id="claim-list"></div>
+      </div>
+      <div class="panel" id="panel-pay">
+        <div class="sec-actions"><h4>Payments 回款 / 自付额</h4>
+          {% if user['role']=='admin' %}<button class="addrec" onclick="openPayModal()">＋ Add entry 录入</button>{% endif %}</div>
+        <div id="pay-list"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ELIGIBILITY FORM (single page) -->
+<div class="modal" id="wizModal">
+  <div class="box">
+    <div class="bhead"><h3>Add eligibility result 录入核查结果</h3><button class="x" onclick="closeWiz()">×</button></div>
+    <div class="bbody">
+      <div class="grid2">
+        <div class="field"><label>Status 状态</label>
+          <select id="w_status"><option>Active</option><option>Inactive</option><option>Pending</option></select></div>
+        <div class="field"><label>Network 网络</label>
+          <select id="w_network"><option>In-Network</option><option>Out-of-Network</option></select></div>
+      </div>
+      <div class="field"><label>Acupuncture covered? 针灸覆盖</label>
+        <select id="w_acu"><option value="1">Yes 覆盖</option><option value="0">No 不覆盖</option></select></div>
+      <div class="grid2">
+        <div class="field"><label>Visits per year 年限次数</label><input id="w_vpy" type="number" placeholder="20"></div>
+        <div class="field"><label>Visits used 已用</label><input id="w_vu" type="number" placeholder="6"></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label>Copay per visit 每次自付 $</label><input id="w_copay" type="number" placeholder="25"></div>
+        <div class="field"><label>Est. reimbursement/visit 预计每次回款 $</label><input id="w_reimb" type="number" placeholder="78"></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label>Deductible total 自付额总额 $</label><input id="w_dt" type="number" placeholder="2000"></div>
+        <div class="field"><label>Deductible met 已付 $</label><input id="w_dm" type="number" placeholder="1540"></div>
+      </div>
+      <div class="field"><label>CPT codes covered</label><input id="w_cpt" placeholder="97810, 97811"></div>
+      <div class="field"><label>Notes 备注</label><textarea id="w_notes" rows="2" placeholder="e.g. Confirmed by phone with Blue Shield on 6/1."></textarea></div>
+      <div style="text-align:right;padding-top:6px"><button class="savebtn" onclick="saveElig()">Save result 保存</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- CLAIM MODAL -->
+<div class="modal" id="claimModal">
+  <div class="box"><div class="bhead"><h3>Add claim 录入申报</h3><button class="x" onclick="hide('claimModal')">×</button></div>
+    <div class="bbody">
+      <!-- DATE MODE PICKER -->
+      <div class="field"><label>Appointment date(s) 看诊日期</label>
+        <div class="choice" style="margin-bottom:10px">
+          <button type="button" id="dm_single" class="sel" onclick="dateMode('single')">One date 单次</button>
+          <button type="button" id="dm_multi" onclick="dateMode('multi')">Several dates 多个日期</button>
+          <button type="button" id="dm_weekly" onclick="dateMode('weekly')">Weekly 每周</button>
+        </div>
+        <!-- single -->
+        <div id="mode-single"><input id="cl_dos" type="date"></div>
+        <!-- multiple specific dates -->
+        <div id="mode-multi" style="display:none">
+          <div style="display:flex;gap:8px;margin-bottom:8px"><input id="cl_multi_one" type="date"><button type="button" class="savebtn" style="padding:8px 14px;white-space:nowrap" onclick="addMultiDate()">Add 添加</button></div>
+          <div id="multiList" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+        </div>
+        <!-- recurring weekly -->
+        <div id="mode-weekly" style="display:none">
+          <div class="grid2">
+            <div class="field"><label>Day of week 星期几</label>
+              <select id="wk_day"><option value="1">Monday 周一</option><option value="2">Tuesday 周二</option><option value="3">Wednesday 周三</option><option value="4">Thursday 周四</option><option value="5">Friday 周五</option><option value="6">Saturday 周六</option><option value="0">Sunday 周日</option></select></div>
+            <div class="field"><label>How many weeks 共几周</label><input id="wk_count" type="number" value="4" min="1" max="52"></div>
+          </div>
+          <div class="field"><label>Starting from 从此日期起</label><input id="wk_start" type="date"></div>
+          <div style="font-size:12px;color:var(--soft)" id="wk_preview"></div>
+        </div>
+      </div>
+      <div class="grid2"><div class="field"><label>ICD-10 诊断</label><input id="cl_icd" placeholder="M54.5"></div><div class="field"><label>CPT 治疗码</label><input id="cl_cpt" placeholder="97810"></div></div>
+      <div class="grid2"><div class="field"><label>Units 单位</label><input id="cl_units" type="number" placeholder="2"></div><div class="field"><label>Charge 收费 $ (per visit 每次)</label><input id="cl_charge" type="number" placeholder="120"></div></div>
+      <div class="grid2"><div class="field"><label>Status 状态</label><select id="cl_status"><option>Submitted</option><option>Accepted</option><option>Paid</option><option>Denied</option></select></div><div class="field"><label>Claim # 申报号</label><input id="cl_num" placeholder="OA-…"></div></div>
+      <div class="field"><label>Paid 回款 $ (per visit 每次)</label><input id="cl_paid" type="number" placeholder="0"></div>
+      <div style="text-align:right"><button class="savebtn" onclick="saveClaim()">Save claim(s) 保存</button></div>
+    </div></div>
+</div>
+
+<!-- PAYMENT MODAL -->
+<div class="modal" id="payModal">
+  <div class="box"><div class="bhead"><h3>Add payment / deductible 录入回款</h3><button class="x" onclick="hide('payModal')">×</button></div>
+    <div class="bbody">
+      <div class="grid2"><div class="field"><label>Date 日期</label><input id="py_date" type="date"></div><div class="field"><label>Type 类型</label><select id="py_kind"><option value="payment">Payment 回款</option><option value="deductible">Deductible 自付额</option></select></div></div>
+      <div class="field"><label>Amount 金额 $</label><input id="py_amt" type="number" placeholder="78"></div>
+      <div class="field"><label>Description 说明</label><input id="py_desc" placeholder="Insurance payment for 5/28 visit"></div>
+      <div style="text-align:right"><button class="savebtn" onclick="savePayment()">Save 保存</button></div>
+    </div></div>
+</div>
+
+<!-- ADD PATIENT MODAL -->
+<div class="modal" id="patModal">
+  <div class="box"><div class="bhead"><h3>Add patient 添加病人</h3><button class="x" onclick="hide('patModal')">×</button></div>
+    <div class="bbody">
+      <div class="grid2"><div class="field"><label>First name 名</label><input id="np_first"></div><div class="field"><label>Last name 姓</label><input id="np_last"></div></div>
+      <div class="field"><label>Date of birth 出生日期</label><input id="np_dob" type="date"></div>
+      <div class="field"><label>Member ID 保险号</label><input id="np_mid"></div>
+      <div class="grid2"><div class="field"><label>Payer 保险公司</label><input id="np_payer"></div><div class="field"><label>Plan 计划</label><input id="np_plan"></div></div>
+      <div style="text-align:right"><button class="savebtn" onclick="savePatient()">Save patient 保存</button></div>
+      <div id="patMsg" style="display:none;color:var(--cinnabar);font-size:13px;margin-top:10px"></div>
+    </div></div>
+</div>
+
+<!-- REQUESTS QUEUE MODAL -->
+<div class="modal" id="queueModal">
+  <div class="box" style="max-width:560px"><div class="bhead"><h3>Requests 请求队列</h3><button class="x" onclick="hide('queueModal')">×</button></div>
+    <div class="bbody" id="queueList"><div class="empty-small">Loading…</div></div></div>
+</div>
+
+<!-- STAFF MANAGEMENT MODAL (admin only) -->
+<div class="modal" id="staffModal">
+  <div class="box" style="max-width:540px"><div class="bhead"><h3>Staff accounts 员工账号</h3><button class="x" onclick="hide('staffModal')">×</button></div>
+    <div class="bbody">
+      <div class="flag" style="background:#EAF3EE;color:var(--jade);border:1px solid var(--celadon)">Staff accounts can see all clinics and enter results — same access as you. 员工账号拥有与您相同的全部权限。</div>
+      <h4 style="font-size:14px;color:var(--jade-deep);margin:6px 0 10px">Add a staff member 添加员工</h4>
+      <div class="grid2"><div class="field"><label>Name 姓名</label><input id="st_name"></div><div class="field"><label>Username 用户名</label><input id="st_user" placeholder="e.g. kenny"></div></div>
+      <div class="grid2"><div class="field"><label>Phone 电话</label><input id="st_phone"></div><div class="field"><label>Email 邮箱</label><input id="st_email"></div></div>
+      <div class="field"><label>Password 密码 (min 6)</label><input id="st_pass" type="password"></div>
+      <div style="text-align:right"><button class="savebtn" onclick="createStaff()">Create staff login 创建</button></div>
+      <div id="staffMsg" style="display:none;font-size:13px;margin-top:10px;font-weight:600"></div>
+      <h4 style="font-size:14px;color:var(--jade-deep);margin:20px 0 10px">Current staff 当前员工</h4>
+      <div id="staffList"><div class="empty-small">Loading…</div></div>
+    </div></div>
+</div>
+
+<script>
+const ROLE=document.body.dataset.role, NAME=document.body.dataset.name;
+document.getElementById('whoName').textContent=NAME+(document.body.dataset.clinic?(' · '+document.body.dataset.clinic):'');
+let currentPatient=null;
+
+(async function(){ if(ROLE==='admin'){ await loadClinics(); } else { await loadPatients(); } refreshBadge();
+  setInterval(refreshBadge,20000);
+  // live preview for the weekly recurring dates
+  ['wk_day','wk_count','wk_start'].forEach(id=>{ const e=document.getElementById(id); if(e) e.addEventListener('input',updateWeeklyPreview); });
+  // Admin: if there are pending requests, open the work queue right away.
+  try{ const d=await (await fetch('/api/requests/count')).json(); if(d.pending>0){ openRequests(); } }catch(e){}
+})();
+
+async function loadClinics(){
+  const docs=await (await fetch('/api/doctors')).json();
+  const sel=document.getElementById('clinicSel');
+  docs.forEach(d=>{ const o=document.createElement('option'); o.value=d.id; o.textContent=(d.clinic||d.name)+' ('+d.patient_count+')'; sel.appendChild(o); });
+}
+async function loadPatients(){
+  let url='/api/patients';
+  if(ROLE==='admin'){ const did=document.getElementById('clinicSel').value;
+    if(!did){ document.getElementById('plist').innerHTML='<div class="empty-small">Select a clinic above 请选择诊所</div>'; return; }
+    url+='?doctor_id='+did; }
+  const ps=await (await fetch(url)).json();
+  const box=document.getElementById('plist');
+  if(!ps.length){ box.innerHTML='<div class="empty-small">No patients yet 暂无病人</div>'; return; }
+  box.innerHTML=ps.map(p=>`<div class="pitem" onclick="openPatient(${p.id},this)"><div><b>${p.first_name} ${p.last_name}</b><small>${p.payer||'—'}</small></div><div class="pdot"></div></div>`).join('');
+}
+async function openPatient(id,el){
+  document.querySelectorAll('.pitem').forEach(x=>x.classList.remove('active'));
+  if(el) el.classList.add('active');
+  const d=await (await fetch('/api/patients/'+id)).json();
+  if(d.error){ alert(d.error); return; }
+  currentPatient=id;
+  const p=d.patient;
+  document.getElementById('emptyState').style.display='none';
+  document.getElementById('detail').style.display='block';
+  document.getElementById('d_name').textContent=p.first_name+' '+p.last_name;
+  document.getElementById('d_meta').innerHTML=`DOB ${p.dob||'—'} · Member ${p.member_id||'—'}<br>${p.payer||'—'} ${p.plan?('· '+p.plan):''}`+(p.doctor_clinic?`<br><b>Clinic:</b> ${p.doctor_clinic}`:'');
+  renderLatest(d.eligibility);
+  renderElig(d.eligibility); renderClaims(d.claims); renderPay(d.payments);
+  ptab('elig');
+}
+function renderLatest(list){
+  const wrap=document.getElementById('latestWrap');
+  if(!list||!list.length){
+    wrap.innerHTML=`<div class="no-latest"><b>No eligibility check yet 暂无核查结果</b>Click “Add result” below to enter what you found. 点击下方“录入结果”录入您的核查结果。</div>`;
+    return;
+  }
+  const e=list[0];
+  const tc=e.status==='Active'?'ok':(e.status==='Inactive'?'no':'wait');
+  const ti=e.status==='Active'?'✓':(e.status==='Inactive'?'✕':'⏳');
+  const lb=e.status==='Active'?'Coverage verified 保险有效':(e.status==='Inactive'?'Not active 保险无效':'Pending 待确认');
+  const pct=e.deductible_total?Math.min(100,Math.round((e.deductible_met||0)/e.deductible_total*100)):0;
+  wrap.innerHTML=`<div class="latest">
+    <div class="when"><span class="live">LATEST 最新</span> Updated ${friendly(e.checked_at)} · by ${e.checked_by||'staff'}</div>
+    <div class="big-status"><span class="tick ${tc}">${ti}</span> ${lb}</div>
+    <div class="lgrid">
+      <div><div class="k">Network 网络</div><div class="v">${e.network||'—'}</div></div>
+      <div><div class="k">Acupuncture 针灸</div><div class="v">${e.acu_covered?'Covered':'No'}</div></div>
+      <div><div class="k">Visits 次数</div><div class="v">${e.visits_used??'—'}/${e.visits_per_year??'—'}</div></div>
+      <div><div class="k">Copay 自付</div><div class="v">${e.copay!=null?'$'+e.copay:'—'}</div></div>
+      <div><div class="k">Est. reimb 预计</div><div class="v">${e.est_reimbursement!=null?'$'+e.est_reimbursement:'—'}</div></div>
+    </div>
+    ${e.deductible_total?`<div style="margin-top:14px"><div class="k" style="font-size:11px;color:var(--celadon);font-weight:600">Deductible 自付额 — $${e.deductible_met||0} of $${e.deductible_total} met</div><div class="lbar"><i style="width:${pct}%"></i></div></div>`:''}
+    ${e.result_notes?`<div class="lnote">📝 ${e.result_notes}</div>`:''}
+  </div>`;
+}
+function ptab(t){
+  document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.p===t));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('panel-'+t).classList.add('active');
+}
+function renderElig(list){
+  const box=document.getElementById('elig-list');
+  if(!list.length){ box.innerHTML='<div class="empty-small">No checks recorded. 暂无记录。</div>'; return; }
+  box.innerHTML=list.map((e,i)=>{
+    const pct=e.deductible_total?Math.min(100,Math.round((e.deductible_met||0)/e.deductible_total*100)):0;
+    return `<div class="rec ${i===0?'newest':''}">
+      <div class="datestamp">${i===0?'<span class="newtag">NEWEST 最新</span>':''} ${friendly(e.checked_at)} · by ${e.checked_by||'—'}</div>
+      <div class="rtop"><b>${e.network||''} · ${e.status||''}</b><span class="badge b-${(e.status||'').toLowerCase()}">${e.status||''}</span></div>
+      <div class="kv">
+        <div><div class="k">Acupuncture</div><div class="v">${e.acu_covered?'Covered':'No'}</div></div>
+        <div><div class="k">Visits</div><div class="v">${e.visits_used??'—'}/${e.visits_per_year??'—'}</div></div>
+        <div><div class="k">Copay</div><div class="v">${e.copay!=null?'$'+e.copay:'—'}</div></div>
+        <div><div class="k">Est. reimb</div><div class="v">${e.est_reimbursement!=null?'$'+e.est_reimbursement:'—'}</div></div>
+      </div>
+      ${e.deductible_total?`<div style="margin-top:8px"><div class="k" style="font-size:11px;color:var(--soft)">Deductible $${e.deductible_met||0} / $${e.deductible_total}</div><div class="bar"><i style="width:${pct}%"></i></div></div>`:''}
+      ${e.cpt_codes?`<div class="rnote">CPT: ${e.cpt_codes}</div>`:''}
+      ${e.result_notes?`<div class="rnote">${e.result_notes}</div>`:''}
+    </div>`;
+  }).join('');
+}
+function renderClaims(list){
+  const box=document.getElementById('claim-list');
+  if(!list.length){ box.innerHTML='<div class="empty-small">No claims recorded. 暂无申报。</div>'; return; }
+  box.innerHTML=list.map((c,i)=>`<div class="rec ${i===0?'newest':''}">
+    <div class="datestamp">${i===0?'<span class="newtag">NEWEST 最新</span>':''} Service date 看诊 ${c.date_of_service||'—'}</div>
+    <div class="rtop"><b>${c.cpt||''}${c.units?(' ×'+c.units):''}</b><span class="badge b-${(c.status||'').toLowerCase()}">${c.status||''}</span></div>
+    <div class="kv"><div><div class="k">ICD-10</div><div class="v">${c.icd10||'—'}</div></div><div><div class="k">Charge</div><div class="v">$${c.charge??'—'}</div></div><div><div class="k">Paid 回款</div><div class="v">$${c.paid??0}</div></div><div><div class="k">Claim #</div><div class="v">${c.claim_number||'—'}</div></div></div>
+    <div class="rnote" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <span style="font-size:11px;color:var(--soft);font-weight:600">Update billing 更新回款:</span>
+      <select id="cs_${c.id}" style="width:auto;padding:6px 10px">
+        ${['Submitted','Accepted','Paid','Denied'].map(s=>`<option ${c.status===s?'selected':''}>${s}</option>`).join('')}
+      </select>
+      <input id="cp_${c.id}" type="number" placeholder="Paid $" value="${c.paid||''}" style="width:90px;padding:6px 10px">
+      <input id="cn_${c.id}" placeholder="Claim #" value="${c.claim_number||''}" style="width:120px;padding:6px 10px">
+      <button class="savebtn" style="padding:7px 14px;font-size:12px" onclick="updateClaim(${c.id})">Save 保存</button>
+    </div>
+  </div>`).join('');
+}
+async function updateClaim(cid){
+  await fetch('/api/claims/'+cid,{method:'PATCH',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({status:val('cs_'+cid),paid:val('cp_'+cid),claim_number:val('cn_'+cid)})});
+  await openPatient(currentPatient,null); ptab('claims');
+}
+function renderPay(list){
+  const box=document.getElementById('pay-list');
+  if(!list.length){ box.innerHTML='<div class="empty-small">No payment entries. 暂无回款。</div>'; return; }
+  box.innerHTML=list.map((p,i)=>`<div class="rec ${i===0?'newest':''}">
+    <div class="datestamp">${i===0?'<span class="newtag">NEWEST 最新</span>':''} ${p.entry_date||'—'}</div>
+    <div class="rtop"><b>${p.kind==='deductible'?'Deductible 自付额':'Payment 回款'}</b><span class="badge b-paid">$${p.amount??0}</span></div>
+    ${p.description?`<div class="rnote">${p.description}</div>`:''}</div>`).join('');
+}
+function friendly(iso){
+  if(!iso) return '—';
+  const d=new Date(iso.replace(' ','T')); const now=new Date();
+  const days=Math.floor((now-d)/864e5); const t=d.toLocaleDateString();
+  if(days<=0) return 'today 今天 ('+t+')';
+  if(days===1) return 'yesterday 昨天 ('+t+')';
+  if(days<7) return days+' days ago ('+t+')';
+  return t;
+}
+// ELIGIBILITY (single form)
+function startWizard(){
+  ['w_vpy','w_vu','w_copay','w_dt','w_dm','w_reimb','w_cpt','w_notes'].forEach(clearVal);
+  document.getElementById('w_status').value='Active';
+  document.getElementById('w_network').value='In-Network';
+  document.getElementById('w_acu').value='1';
+  document.getElementById('wizModal').classList.add('show');
+}
+function closeWiz(){ hide('wizModal'); }
+async function saveElig(){
+  const body={
+    status:val('w_status'), network:val('w_network'),
+    acu_covered: val('w_acu')==='1',
+    visits_per_year:val('w_vpy'), visits_used:val('w_vu'), copay:val('w_copay'),
+    deductible_total:val('w_dt'), deductible_met:val('w_dm'), est_reimbursement:val('w_reimb'),
+    cpt_codes:val('w_cpt'), result_notes:val('w_notes')
+  };
+  await post(`/api/patients/${currentPatient}/eligibility`,body);
+  hide('wizModal');
+  await openPatient(currentPatient,null);
+}
+// claim / payment / patient
+function openClaimModal(){
+  curDateMode='single'; multiDates=[];
+  dateMode('single'); renderMulti();
+  document.getElementById('claimModal').classList.add('show');
+}
+let curDateMode='single', multiDates=[];
+function dateMode(m){
+  curDateMode=m;
+  document.getElementById('dm_single').classList.toggle('sel',m==='single');
+  document.getElementById('dm_multi').classList.toggle('sel',m==='multi');
+  document.getElementById('dm_weekly').classList.toggle('sel',m==='weekly');
+  document.getElementById('mode-single').style.display = m==='single'?'block':'none';
+  document.getElementById('mode-multi').style.display  = m==='multi'?'block':'none';
+  document.getElementById('mode-weekly').style.display = m==='weekly'?'block':'none';
+  if(m==='weekly') updateWeeklyPreview();
+}
+function addMultiDate(){
+  const v=val('cl_multi_one'); if(!v) return;
+  if(!multiDates.includes(v)) multiDates.push(v);
+  multiDates.sort();
+  document.getElementById('cl_multi_one').value='';
+  renderMulti();
+}
+function renderMulti(){
+  const box=document.getElementById('multiList');
+  if(!multiDates.length){ box.innerHTML='<span style="font-size:12px;color:var(--soft)">No dates added yet 暂无日期</span>'; return; }
+  box.innerHTML=multiDates.map((d,i)=>`<span style="background:#EAF3EE;color:var(--jade);border-radius:100px;padding:4px 10px;font-size:12px;font-weight:600">${d} <b style="cursor:pointer;margin-left:4px" onclick="rmMulti(${i})">×</b></span>`).join('');
+}
+function rmMulti(i){ multiDates.splice(i,1); renderMulti(); }
+function weeklyDates(){
+  const start=val('wk_start'); const day=parseInt(val('wk_day')); const count=parseInt(val('wk_count'))||0;
+  if(!start||!count) return [];
+  const out=[]; let d=new Date(start+'T00:00:00');
+  // advance to the first matching weekday on/after the start date
+  while(d.getDay()!==day){ d.setDate(d.getDate()+1); }
+  for(let i=0;i<count;i++){ out.push(d.toISOString().slice(0,10)); d.setDate(d.getDate()+7); }
+  return out;
+}
+function updateWeeklyPreview(){
+  const ds=weeklyDates();
+  document.getElementById('wk_preview').textContent = ds.length? ('Will create '+ds.length+' claims: '+ds.join(', ')) : 'Pick a start date 请选择开始日期';
+}
+async function saveClaim(){
+  let dates=[];
+  if(curDateMode==='single'){ const v=val('cl_dos'); if(v) dates=[v]; }
+  else if(curDateMode==='multi'){ dates=multiDates.slice(); }
+  else if(curDateMode==='weekly'){ dates=weeklyDates(); }
+  if(!dates.length){ alert('Please add at least one date 请添加至少一个日期'); return; }
+  await post(`/api/patients/${currentPatient}/claims`,{dates:dates,icd10:val('cl_icd'),cpt:val('cl_cpt'),units:val('cl_units'),charge:val('cl_charge'),status:val('cl_status'),paid:val('cl_paid'),claim_number:val('cl_num')});
+  ['cl_dos','cl_icd','cl_cpt','cl_units','cl_charge','cl_paid','cl_num','cl_multi_one','wk_start'].forEach(clearVal);
+  multiDates=[];
+  hide('claimModal'); await openPatient(currentPatient,null); ptab('claims');
+}
+function openPayModal(){ document.getElementById('payModal').classList.add('show'); }
+async function savePayment(){
+  await post(`/api/patients/${currentPatient}/payments`,{entry_date:val('py_date'),kind:val('py_kind'),amount:val('py_amt'),description:val('py_desc')});
+  ['py_amt','py_desc'].forEach(clearVal);
+  hide('payModal'); await openPatient(currentPatient,null); ptab('pay');
+}
+function openAddPatient(){ if(ROLE==='admin'&&!document.getElementById('clinicSel').value){ alert('Select a clinic first 请先选择诊所'); return; } document.getElementById('patModal').classList.add('show'); }
+async function savePatient(){
+  const body={first_name:val('np_first'),last_name:val('np_last'),dob:val('np_dob'),member_id:val('np_mid'),payer:val('np_payer'),plan:val('np_plan')};
+  if(ROLE==='admin'){ body.doctor_id=document.getElementById('clinicSel').value; }
+  const r=await fetch('/api/patients',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const d=await r.json();
+  if(!r.ok){ const m=document.getElementById('patMsg'); m.style.display='block'; m.textContent=d.error; return; }
+  ['np_first','np_last','np_dob','np_mid','np_payer','np_plan'].forEach(clearVal);
+  hide('patModal'); loadPatients();
+}
+// requests
+async function refreshBadge(){
+  try{ const d=await (await fetch('/api/requests/count')).json();
+    const b=document.getElementById('reqBadge');
+    if(d.pending>0){ b.style.display='inline-block'; b.textContent=d.pending; } else { b.style.display='none'; }
+  }catch(e){}
+}
+function openRequestModal(){ /* admins do not submit requests */ }
+async function openRequests(){
+  document.getElementById('queueModal').classList.add('show');
+  const box=document.getElementById('queueList'); box.innerHTML='<div class="empty-small">Loading…</div>';
+  const list=await (await fetch('/api/requests')).json();
+  if(!list.length){ box.innerHTML='<div class="empty-small">No requests. 暂无请求。</div>'; return; }
+  box.innerHTML=list.map(q=>{
+    const done=q.status==='done';
+    const ctrl=(ROLE==='admin'&&!done)?`<div style="margin-top:10px"><input id="reply_${q.id}" placeholder="Reply note (optional) 回复备注" style="margin-bottom:8px"><button class="savebtn" onclick="resolveReq(${q.id},${q.patient_id})">Mark done & open patient 标记完成</button></div>`:'';
+    const rep=done&&q.admin_reply?`<div class="rnote">Reply: ${q.admin_reply}</div>`:'';
+    return `<div class="rec ${!done?'newest':''}"><div class="datestamp">${friendly(q.created_at)}</div>
+      <div class="rtop"><b>${q.first_name} ${q.last_name} · ${q.type}</b><span class="badge ${done?'b-done':'b-pending'}">${done?'Done 完成':'Pending 待处理'}</span></div>
+      <div class="kv"><div><div class="k">Clinic</div><div class="v">${q.doctor_clinic||q.doctor_name}</div></div><div><div class="k">Payer</div><div class="v">${q.payer||'—'}</div></div></div>
+      ${q.message?`<div class="rnote">"${q.message}"</div>`:''}${rep}${ctrl}</div>`;
+  }).join('');
+}
+async function resolveReq(rid,pid){
+  const reply=(document.getElementById('reply_'+rid)||{}).value||'';
+  await fetch(`/api/requests/${rid}/resolve`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({admin_reply:reply})});
+  hide('queueModal'); refreshBadge();
+  if(ROLE==='admin'){ await openPatient(pid,null); startWizard(); }
+}
+function val(id){const e=document.getElementById(id);return e?e.value.trim():'';}
+function clearVal(id){const e=document.getElementById(id);if(e)e.value='';}
+function hide(id){document.getElementById(id).classList.remove('show');}
+async function post(url,body){
+  const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(!r.ok){ const d=await r.json(); alert(d.error||'Save failed'); throw new Error('fail'); }
+}
+// STAFF MANAGEMENT (admin only)
+async function openStaff(){
+  document.getElementById('staffModal').classList.add('show');
+  document.getElementById('staffMsg').style.display='none';
+  loadStaff();
+}
+async function loadStaff(){
+  const box=document.getElementById('staffList');
+  const list=await (await fetch('/api/staff')).json();
+  if(list.error){ box.innerHTML='<div class="empty-small">'+list.error+'</div>'; return; }
+  box.innerHTML=list.map(s=>`<div class="rec"><div class="rtop"><b>${s.name}</b><span class="badge b-done">@${s.username}</span></div>
+    <div style="font-size:12.5px;color:var(--soft)">${s.email||''} ${s.phone?('· '+s.phone):''}</div></div>`).join('');
+}
+async function createStaff(){
+  const msg=document.getElementById('staffMsg');
+  const body={name:val('st_name'),username:val('st_user'),phone:val('st_phone'),email:val('st_email'),password:val('st_pass')};
+  const r=await fetch('/api/staff',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const d=await r.json();
+  if(!r.ok){ msg.style.display='block'; msg.style.color='var(--cinnabar)'; msg.textContent=d.error; return; }
+  msg.style.display='block'; msg.style.color='var(--jade)'; msg.textContent='✓ Staff login created. 员工账号已创建。';
+  ['st_name','st_user','st_phone','st_email','st_pass'].forEach(clearVal);
+  loadStaff();
+}
+async function logout(){ await fetch('/api/logout',{method:'POST'}); location.href='/login'; }
+</script>
+</body>
+</html>
