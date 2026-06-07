@@ -31,9 +31,14 @@ import notify
 app = Flask(__name__)
 app.secret_key = os.environ.get("HB_SECRET", "dev-secret-change-in-production")
 
-# make sure the DB exists on startup
-models.init_db()
-models.seed()
+# make sure the DB exists on startup. Wrapped so that a missing/misconfigured
+# database (e.g. env vars not set yet) can't take down the public marketing
+# pages — only the login/portal routes would be affected.
+try:
+    models.init_db()
+    models.seed()
+except Exception as e:
+    app.logger.warning("Database init skipped: %s", e)
 
 
 # ---------------------------------------------------------------------------

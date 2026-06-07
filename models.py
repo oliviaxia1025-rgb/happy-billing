@@ -16,20 +16,98 @@ Tables:
   payments     - deductible / payment tracking entries, per patient
 """
 
-import sqlite3
 import os
 import hashlib
 import secrets
 import datetime
 
+try:
+    import libsql                       # Turso / libSQL client (remote-capable)
+except ImportError:                     # older package name on some installs
+    import libsql_experimental as libsql
+
 DB_PATH = os.path.join(os.path.dirname(__file__), "billing.db")
+
+# Remote Turso database — set these as environment variables in Vercel.
+# If they're unset (e.g. running on your laptop) we fall back to a local file,
+# so `python app.py` keeps working exactly like before.
+TURSO_URL   = os.environ.get("TURSO_DATABASE_URL")
+TURSO_TOKEN = os.environ.get("TURSO_AUTH_TOKEN")
+
+
+# ---------------------------------------------------------------------------
+# sqlite3.Row compatibility shim
+# ---------------------------------------------------------------------------
+# libsql returns plain tuples, but the rest of this app expects sqlite3.Row-
+# style access: row["column"] and dict(row). These thin wrappers restore that
+# behaviour so NOTHING else in the codebase has to change.
+class _Row:
+    __slots__ = ("_vals", "_map")
+
+    def __init__(self, cols, vals):
+        self._vals = vals
+        self._map = {c: v for c, v in zip(cols, vals)}
+
+    def __getitem__(self, key):
+        return self._map[key] if isinstance(key, str) else self._vals[key]
+
+    def keys(self):                      # lets dict(row) work
+        return list(self._map.keys())
+
+    def __iter__(self):
+        return iter(self._vals)
+
+    def __len__(self):
+        return len(self._vals)
+
+
+class _Cursor:
+    def __init__(self, cur):
+        self._cur = cur
+        self.lastrowid = getattr(cur, "lastrowid", None)
+
+    def _cols(self):
+        return [d[0] for d in (self._cur.description or [])]
+
+    def fetchone(self):
+        r = self._cur.fetchone()
+        return None if r is None else _Row(self._cols(), r)
+
+    def fetchall(self):
+        cols = self._cols()
+        return [_Row(cols, r) for r in self._cur.fetchall()]
+
+
+class _Conn:
+    """Wraps a libsql connection so it behaves like the sqlite3 connection
+    the rest of the code was written against."""
+
+    def __init__(self, raw):
+        self._raw = raw
+
+    def execute(self, sql, params=()):
+        return _Cursor(self._raw.execute(sql, params))
+
+    def executescript(self, script):
+        self._raw.executescript(script)
+
+    def commit(self):
+        self._raw.commit()
+
+    def close(self):
+        self._raw.close()
 
 
 def get_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row          # rows behave like dicts
-    conn.execute("PRAGMA foreign_keys = ON")
-    return conn
+    if TURSO_URL:
+        raw = libsql.connect(database=TURSO_URL, auth_token=TURSO_TOKEN)
+    else:
+        raw = libsql.connect(DB_PATH)    # local-file fallback for dev
+    try:
+        raw.execute("PRAGMA foreign_keys = ON")
+    except Exception:
+        pass
+    return _Conn(raw)
 
 
 # ---------------------------------------------------------------------------
