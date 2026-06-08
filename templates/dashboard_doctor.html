@@ -339,7 +339,8 @@ async function savePatient(){
   const d=await r.json();
   if(!r.ok){ const m=document.getElementById('patMsg'); m.style.display='block'; m.textContent=d.error; return; }
   ['np_first','np_last','np_dob','np_mid','np_payer','np_plan'].forEach(clearVal);
-  hide('patModal'); loadPatients();
+  hide('patModal'); loadPatients(); refreshBadge();
+  alert('Patient added. An eligibility check request was sent to Happy Billing staff. 已添加病人，并已自动向工作人员发送资格审核请求。');
 }
 async function submitRequest(){
   if(!currentPatient){ alert('Open a patient first 请先选择病人'); return; }

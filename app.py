@@ -31,14 +31,17 @@ import notify
 app = Flask(__name__)
 app.secret_key = os.environ.get("HB_SECRET", "dev-secret-change-in-production")
 
-# make sure the DB exists on startup. Wrapped so that a missing/misconfigured
-# database (e.g. env vars not set yet) can't take down the public marketing
-# pages — only the login/portal routes would be affected.
-try:
-    models.init_db()
-    models.seed()
-except Exception as e:
-    app.logger.warning("Database init skipped: %s", e)
+# Make sure the DB exists on startup — but ONLY for local development.
+# In production the Turso database is already initialised and seeded, and
+# re-running this on every serverless cold start would add several slow
+# cross-network round-trips to the first request. So we skip it when a remote
+# database is configured. (Wrapped so a misconfig can't take down public pages.)
+if not models.TURSO_URL:
+    try:
+        models.init_db()
+        models.seed()
+    except Exception as e:
+        app.logger.warning("Database init skipped: %s", e)
 
 
 # ---------------------------------------------------------------------------
@@ -246,15 +249,34 @@ def api_add_patient():
     if not d.get("first_name") or not d.get("last_name"):
         return jsonify({"error": "First and last name required"}), 400
     db = models.get_db()
-    db.execute(
+    cur = db.execute(
         "INSERT INTO patients(doctor_id,first_name,last_name,dob,member_id,payer,plan,notes,created_at) "
         "VALUES(?,?,?,?,?,?,?,?,?)",
         (doctor_id, d["first_name"], d["last_name"], d.get("dob"), d.get("member_id"),
          d.get("payer"), d.get("plan"), d.get("notes"), models.now()))
+    pid = cur.lastrowid or db.execute("SELECT last_insert_rowid() AS id").fetchone()["id"]
+
+    # Automatically open an eligibility-check request to staff for the new
+    # patient, so the doctor doesn't have to send one manually afterwards.
+    db.execute(
+        "INSERT INTO requests(patient_id,doctor_id,type,message,status,created_at) "
+        "VALUES(?,?,?,?,'pending',?)",
+        (pid, doctor_id, "eligibility",
+         d.get("notes") or "Auto-created with new patient — please run an eligibility check.",
+         models.now()))
     db.commit()
-    pid = db.execute("SELECT last_insert_rowid() AS id").fetchone()["id"]
     db.close()
-    return jsonify({"id": pid, "ok": True})
+
+    # Notify staff (email if configured, otherwise console). Never blocks the save.
+    notify.send_notification(
+        subject=f"New patient + eligibility request — {d['first_name']} {d['last_name']}",
+        body=(f"{u['name']} added a new patient and an eligibility check was requested.\n\n"
+              f"Patient: {d['first_name']} {d['last_name']}\n"
+              f"DOB: {d.get('dob') or '—'}   Member ID: {d.get('member_id') or '—'}\n"
+              f"Payer: {d.get('payer') or '—'}   Plan: {d.get('plan') or '—'}\n"
+              f"Note: {d.get('notes') or '(none)'}\n\n"
+              f"Open the portal to respond."))
+    return jsonify({"id": pid, "ok": True, "request_created": True})
 
 
 @app.route("/api/patients/<int:pid>")

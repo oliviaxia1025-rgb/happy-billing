@@ -103,10 +103,9 @@ def get_db():
         raw = libsql.connect(database=TURSO_URL, auth_token=TURSO_TOKEN)
     else:
         raw = libsql.connect(DB_PATH)    # local-file fallback for dev
-    try:
-        raw.execute("PRAGMA foreign_keys = ON")
-    except Exception:
-        pass
+    # NOTE: we deliberately skip "PRAGMA foreign_keys = ON" here — over a remote
+    # database it costs an extra network round-trip on every single request, and
+    # nothing in the app relies on cascade deletes.
     return _Conn(raw)
 
 
