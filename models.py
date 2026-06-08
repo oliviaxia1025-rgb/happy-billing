@@ -20,6 +20,7 @@ import os
 import hashlib
 import secrets
 import datetime
+import bcrypt
 
 try:
     import libsql                       # Turso / libSQL client (remote-capable)
@@ -110,20 +111,34 @@ def get_db():
 
 
 # ---------------------------------------------------------------------------
-# password hashing (salted SHA-256 — fine for a prototype; use bcrypt in prod)
+# password hashing — bcrypt for all new/updated passwords, with backward
+# compatibility for the old salted-SHA256 hashes already in the database.
+# (Old logins keep working and are upgraded to bcrypt on next successful login.)
 # ---------------------------------------------------------------------------
-def hash_password(password, salt=None):
-    salt = salt or secrets.token_hex(16)
-    h = hashlib.sha256((salt + password).encode()).hexdigest()
-    return f"{salt}${h}"
+def hash_password(password, salt=None):   # `salt` kept for call-signature compat
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+
+def is_legacy_hash(stored):
+    """True for the old 'salt$sha256hex' format. bcrypt hashes start with '$2'."""
+    return not (stored or "").startswith("$2")
 
 
 def verify_password(password, stored):
+    if not stored:
+        return False
+    if not is_legacy_hash(stored):
+        try:
+            return bcrypt.checkpw(password.encode("utf-8"), stored.encode("utf-8"))
+        except Exception:
+            return False
+    # legacy salted SHA-256: "salt$hexdigest"
     try:
         salt, _ = stored.split("$", 1)
     except ValueError:
         return False
-    return hash_password(password, salt) == stored
+    h = hashlib.sha256((salt + password).encode()).hexdigest()
+    return secrets.compare_digest(f"{salt}${h}", stored)
 
 
 # ---------------------------------------------------------------------------

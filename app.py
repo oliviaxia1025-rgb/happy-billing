@@ -150,6 +150,16 @@ def api_login():
     db.close()
     if not u or not models.verify_password(d.get("password", ""), u["password"]):
         return jsonify({"error": "Invalid username or password"}), 401
+    # Transparently upgrade an old SHA-256 hash to bcrypt on successful login.
+    if models.is_legacy_hash(u["password"]):
+        try:
+            up = models.get_db()
+            up.execute("UPDATE users SET password=? WHERE id=?",
+                       (models.hash_password(d.get("password", "")), u["id"]))
+            up.commit()
+            up.close()
+        except Exception:
+            pass  # never block a valid login on the upgrade
     session["uid"] = u["id"]
     return jsonify({"role": u["role"], "name": u["name"]})
 
